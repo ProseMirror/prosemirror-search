@@ -74,7 +74,7 @@ export class SearchQuery {
       if (from <= to) return null
       let result = this.impl.findPrev(state, from, to)
       if (!result || this.checkResult(state, result)) return result
-      from = result.from - 1
+      from = result.to - 1
     }
   }
 
@@ -114,17 +114,19 @@ class StringQuery implements QueryImpl {
 
   findNext(state: EditorState, from: number, to: number) {
     return scanTextblocks(state.doc, from, to, (node, start) => {
-      let content = textContent(node, Math.max(0, from - start), Math.min(node.content.size, to - start))
+      let off = Math.max(from, start)
+      let content = textContent(node, off - start, Math.min(node.content.size, to - start))
       let index = (this.query.caseSensitive ? content : content.toLowerCase()).indexOf(this.string)
-      return index < 0 ? null : {from: start + index, to: start + index + this.string.length, match: null}
+      return index < 0 ? null : {from: off + index, to: off + index + this.string.length, match: null}
     })
   }
 
   findPrev(state: EditorState, from: number, to: number) {
     return scanTextblocks(state.doc, from, to, (node, start) => {
-      let content = textContent(node, Math.max(0, to - start), Math.min(node.content.size, from - start))
+      let off = Math.max(to, start)
+      let content = textContent(node, off - start, Math.min(node.content.size, from - start))
       let index = (this.query.caseSensitive ? content : content.toLowerCase()).lastIndexOf(this.string)
-      return index < 0 ? null : {from: start + index, to: start + index + this.string.length, match: null}
+      return index < 0 ? null : {from: off + index, to: off + index + this.string.length, match: null}
     })
   }
 }
@@ -135,7 +137,7 @@ class RegExpQuery implements QueryImpl {
   regexp: RegExp
 
   constructor(readonly query: SearchQuery) {
-    this.regexp = new RegExp(query.search, baseFlags + (query.caseSensitive ? "i" : ""))
+    this.regexp = new RegExp(query.search, baseFlags + (query.caseSensitive ? "" : "i"))
   }
 
   findNext(state: EditorState, from: number, to: number) {
@@ -197,10 +199,10 @@ function scanTextblocks<T>(node: Node, from: number, to: number,
     return f(node, nodeStart)
   } else if (!node.isLeaf) {
     if (from > to) {
-      for (let i = node.childCount - 1, pos = nodeStart + node.content.size; i >= 0 && pos > from; i--) {
+      for (let i = node.childCount - 1, pos = nodeStart + node.content.size; i >= 0 && pos > to; i--) {
         let child = node.child(i)
         pos -= child.nodeSize
-        if (pos < to) {
+        if (pos < from) {
           let result = scanTextblocks(child, from, to, f, pos + 1)
           if (result != null) return result
         }
@@ -223,5 +225,5 @@ function checkWordBoundary(state: EditorState, pos: number) {
   let $pos = state.doc.resolve(pos)
   let before = $pos.nodeBefore, after = $pos.nodeAfter
   if (!before || !after || !before.isText || !after.isText) return true
-  return /\p{L}$/u.test(before.text!) != /^\p{L}/u.test(after.text!)
+  return !/\p{L}$/u.test(before.text!) || !/^\p{L}/u.test(after.text!)
 }

@@ -27,13 +27,16 @@
     "url": "git://github.com/prosemirror/prosemirror-search.git"
   },
   "dependencies": {
-    "prosemirror-state": "^1.0.0",
-    "prosemirror-view": "^1.0.0"
+    "prosemirror-model": "^1.21.0",
+    "prosemirror-state": "^1.4.3",
+    "prosemirror-view": "^1.33.6"
   },
   "devDependencies": {
-    "@prosemirror/buildhelper": "^0.1.5"
+    "@prosemirror/buildhelper": "^0.1.5",
+    "prosemirror-test-builder": "^1.0.0"
   },
   "scripts": {
+    "test": "pm-runtests",
     "prepare": "pm-buildhelper src/index.ts"
   }
 }
