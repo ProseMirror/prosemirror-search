@@ -60,6 +60,7 @@ export class SearchQuery {
       this.wholeWord == other.wholeWord
   }
 
+  /// Find the next occurrence of this query in the given range.
   findNext(state: EditorState, from: number = 0, to: number = state.doc.content.size) {
     for (;;) {
       if (from >= to) return null
@@ -69,6 +70,8 @@ export class SearchQuery {
     }
   }
 
+  /// Find the previous occurrence of this query in the given range.
+  /// Note that, if `to` is given, it should be _less_ than `from`.
   findPrev(state: EditorState, from: number = state.doc.content.size, to: number = 0) {
     for (;;) {
       if (from <= to) return null
