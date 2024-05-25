@@ -1,4 +1,40 @@
-Item search is missing from the doc template
+# prosemirror-search
+
+[ [**WEBSITE**](https://prosemirror.net) | [**ISSUES**](https://github.com/prosemirror/prosemirror/issues) | [**FORUM**](https://discuss.prosemirror.net) | [**GITTER**](https://gitter.im/ProseMirror/prosemirror) ]
+
+This [module](https://prosemirror.net/docs/ref/#search) defines an API
+for searching through ProseMirror documents, search/replace commands,
+and a plugin that highlights the matches of a given search query.
+
+When using this module, you should either load
+[`style/search.css`](https://github.com/ProseMirror/prosemirror-search/blob/master/style/search.css)
+into your page, or define your own styles for the
+`ProseMirror-search-match` (search match) and
+`ProseMirror-active-search-match` (the active match) classes.
+
+The [project page](https://prosemirror.net) has more information, a
+number of [examples](https://prosemirror.net/examples/) and the
+[documentation](https://prosemirror.net/docs/).
+
+This code is released under an
+[MIT license](https://github.com/prosemirror/prosemirror/tree/master/LICENSE).
+There's a [forum](http://discuss.prosemirror.net) for general
+discussion and support requests, and the
+[Github bug tracker](https://github.com/prosemirror/prosemirror/issues)
+is the place to report issues.
+
+We aim to be an inclusive, welcoming community. To make that explicit,
+we have a [code of
+conduct](http://contributor-covenant.org/version/1/1/0/) that applies
+to communication around the project.
+
+## API
+
+ * **`search`**`(options?: {initialQuery?: SearchQuery, initialRange?: {from: number, to: number}} = {}) → Plugin`\
+   Returns a plugin that stores a current search query and searched
+   range, and highlights matches of the query.
+
+
 ### class SearchQuery
 
  * `new `**`SearchQuery`**`(config: Object)`\
@@ -79,11 +115,6 @@ only for regular expression queries.
  * **`match`**`: RegExpMatchArray`
 
 
- * **`search`**`(options?: {initialQuery?: SearchQuery, initialRange?: {from: number, to: number}} = {}) → Plugin`\
-   Returns a plugin that stores a current search query and searched
-   range, and highlights matches of the query.
-
-
  * **`getSearchState`**`(state: EditorState) → {query: SearchQuery, range: {from: number, to: number}}`\
    Get the current active search query and searched range. Will
    return `undefined` is the search plugin isn't active.
@@ -94,19 +125,21 @@ only for regular expression queries.
    and searched range, when dispatched.
 
 
+### Commands
+
  * **`findNext`**`: Command`\
    Find the next instance of the search query after the current
    selection and move the selection to it.
 
 
- * **`findNextNoWrap`**`: Command`\
-   Find the next instance of the search query and move the selection
-   to it. Don't wrap around at the end of document or search range.
-
-
  * **`findPrev`**`: Command`\
    Find the previous instance of the search query and move the
    selection to it.
+
+
+ * **`findNextNoWrap`**`: Command`\
+   Find the next instance of the search query and move the selection
+   to it. Don't wrap around at the end of document or search range.
 
 
  * **`findPrevNoWrap`**`: Command`\
@@ -126,4 +159,5 @@ only for regular expression queries.
 
  * **`replaceAll`**`: Command`\
    Replace all instances of the search query.
+
 

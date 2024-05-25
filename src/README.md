@@ -30,7 +30,7 @@ to communication around the project.
 
 ## API
 
-@search 
+@search
 
 @SearchQuery
 
