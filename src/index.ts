@@ -1,1 +1,0 @@
-export {SearchQuery} from "./query"

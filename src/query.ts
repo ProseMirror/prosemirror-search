@@ -1,5 +1,5 @@
 import {EditorState} from "prosemirror-state"
-import {Node} from "prosemirror-model"
+import {Node, Slice, Fragment} from "prosemirror-model"
 
 export class SearchQuery {
   /// The search string (or regular expression).
@@ -85,9 +85,42 @@ export class SearchQuery {
   checkResult(state: EditorState, result: SearchResult) {
     return this.wholeWord ? checkWordBoundary(state, result.from) && checkWordBoundary(state, result.to) : true
   }
+
+  /// @internal
+  unquote(string: string) {
+    return this.literal ? string
+      : string.replace(/\\([nrt\\])/g, (_, ch) => ch == "n" ? "\n" : ch == "r" ? "\r" : ch == "t" ? "\t" : "\\")
+  }
+
+  /// Get a replacement slice for a given search result.
+  getReplacement(state: EditorState, result: SearchResult): Slice {
+    let text = this.unquote(this.replace)
+    let nodes = [], i = 0
+    if (result.match) {
+      text = text.replace(/\$([$&\d+])/g, (m, i) =>
+        i == "$" ? "$"
+        : i == "&" ? result.match![0]
+        : i != "0" && +i < result.match!.length ? result.match![i]
+        : m)
+      for (let pos = result.from;;) {
+        let obj = text.indexOf("\ufffc", i)
+        if (obj < 0) break
+        let found = findLeafBetween(state, pos, result.to)
+        if (!found) break
+        if (obj > i) nodes.push(state.schema.text(text.slice(i, obj)))
+        nodes.push(found.node)
+        i = obj + 1
+        pos = found.pos + 1
+      }
+    }
+    if (i < text.length) nodes.push(state.schema.text(text.slice(i)))
+    return new Slice(Fragment.from(nodes), 0, 0)
+  }
 }
 
-interface SearchResult {
+/// A matched instance of a search query. `match` will be non-null
+/// only for regular expression queries.
+export interface SearchResult {
   from: number,
   to: number,
   match: RegExpMatchArray | null
@@ -107,11 +140,8 @@ class StringQuery implements QueryImpl {
   string: string
 
   constructor(readonly query: SearchQuery) {
-    let string = query.search
-    if (!query.literal)
-      string = string.replace(/\\([nrt\\])/g, (_, ch) => ch == "n" ? "\n" : ch == "r" ? "\r" : ch == "t" ? "\t" : "\\")
-    if (!query.caseSensitive)
-      string = string.toLowerCase()
+    let string = query.unquote(query.search)
+    if (!query.caseSensitive) string = string.toLowerCase()
     this.string = string
   }
 
@@ -181,8 +211,8 @@ function textContent(node: Node, from: number, to: number) {
     if (end <= from) continue
     if (child.isText) {
       let text = child.text!
-      if (to < end) text = text.slice(0, to - pos)
-      if (pos > from) text = text.slice(from - pos)
+      if (to < end) text = text.slice(0, to - start)
+      if (from > start) text = text.slice(from - start)
       content += text
     } else if (child.isLeaf) {
       content += "\ufffc"
@@ -229,4 +259,13 @@ function checkWordBoundary(state: EditorState, pos: number) {
   let before = $pos.nodeBefore, after = $pos.nodeAfter
   if (!before || !after || !before.isText || !after.isText) return true
   return !/\p{L}$/u.test(before.text!) || !/^\p{L}/u.test(after.text!)
+}
+
+function findLeafBetween(state: EditorState, from: number, to: number): {node: Node, pos: number} | null {
+  let found: {node: Node, pos: number} | null = null
+  state.doc.nodesBetween(from, to, (node, pos) => {
+    if (found) return false
+    if (node.isLeaf && node.isInline && !node.isText) found = {node, pos}
+  })
+  return found
 }

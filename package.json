@@ -37,6 +37,6 @@
   },
   "scripts": {
     "test": "pm-runtests",
-    "prepare": "pm-buildhelper src/index.ts"
+    "prepare": "pm-buildhelper src/search.ts"
   }
 }
