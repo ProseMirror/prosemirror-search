@@ -115,6 +115,8 @@ only for regular expression queries.
  * **`match`**`: RegExpMatchArray`
 
 
+These functions can be used to manipulate the active search state:
+
  * **`getSearchState`**`(state: EditorState) → {query: SearchQuery, range: {from: number, to: number}}`\
    Get the current active search query and searched range. Will
    return `undefined` is the search plugin isn't active.
