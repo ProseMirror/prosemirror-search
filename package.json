@@ -33,10 +33,13 @@
   },
   "devDependencies": {
     "@prosemirror/buildhelper": "^0.1.5",
-    "prosemirror-test-builder": "^1.0.0"
+    "prosemirror-test-builder": "^1.0.0",
+    "builddocs": "^1.0.6",
+    "getdocs-ts": "^1.0.0"
   },
   "scripts": {
     "test": "pm-runtests",
-    "prepare": "pm-buildhelper src/search.ts"
+    "prepare": "pm-buildhelper src/search.ts",
+    "build-readme": "builddocs --name search --main src/README.md --format markdown src/search.ts > README.md"
   }
 }
