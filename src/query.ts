@@ -94,6 +94,7 @@ export class SearchQuery {
 
   /// Get a replacement slice for a given search result.
   getReplacement(state: EditorState, result: SearchResult): Slice {
+    let marks = state.doc.resolve(result.from).marksAcross(state.doc.resolve(result.to))
     let text = this.unquote(this.replace)
     let nodes = [], i = 0
     if (result.match) {
@@ -107,13 +108,13 @@ export class SearchQuery {
         if (obj < 0) break
         let found = findLeafBetween(state, pos, result.to)
         if (!found) break
-        if (obj > i) nodes.push(state.schema.text(text.slice(i, obj)))
+        if (obj > i) nodes.push(state.schema.text(text.slice(i, obj), marks))
         nodes.push(found.node)
         i = obj + 1
         pos = found.pos + 1
       }
     }
-    if (i < text.length) nodes.push(state.schema.text(text.slice(i)))
+    if (i < text.length) nodes.push(state.schema.text(text.slice(i), marks))
     return new Slice(Fragment.from(nodes), 0, 0)
   }
 }
