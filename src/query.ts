@@ -148,7 +148,7 @@ class StringQuery implements QueryImpl {
   findNext(state: EditorState, from: number, to: number) {
     return scanTextblocks(state.doc, from, to, (node, start) => {
       let off = Math.max(from, start)
-      let content = textContent(node, off - start, Math.min(node.content.size, to - start))
+      let content = textContent(node).slice(off - start, Math.min(node.content.size, to - start))
       let index = (this.query.caseSensitive ? content : content.toLowerCase()).indexOf(this.string)
       return index < 0 ? null : {from: off + index, to: off + index + this.string.length, match: null}
     })
@@ -156,9 +156,10 @@ class StringQuery implements QueryImpl {
 
   findPrev(state: EditorState, from: number, to: number) {
     return scanTextblocks(state.doc, from, to, (node, start) => {
-      let off = Math.max(to, start)
-      let content = textContent(node, off - start, Math.min(node.content.size, from - start))
-      let index = (this.query.caseSensitive ? content : content.toLowerCase()).lastIndexOf(this.string)
+      let off = Math.max(start, to)
+      let content = textContent(node).slice(off - start, Math.min(node.content.size, from - start))
+      if (!this.query.caseSensitive) content = content.toLowerCase()
+      let index = content.lastIndexOf(this.string)
       return index < 0 ? null : {from: off + index, to: off + index + this.string.length, match: null}
     })
   }
@@ -175,7 +176,7 @@ class RegExpQuery implements QueryImpl {
 
   findNext(state: EditorState, from: number, to: number) {
     return scanTextblocks(state.doc, from, to, (node, start) => {
-      let content = textContent(node, 0, Math.min(node.content.size, to - start))
+      let content = textContent(node).slice(0, Math.min(node.content.size, to - start))
       this.regexp.lastIndex = from - start
       let match = this.regexp.exec(content)
       return match ? {from: start + match.index, to: start + match.index + match[0].length, match} : null
@@ -184,7 +185,7 @@ class RegExpQuery implements QueryImpl {
 
   findPrev(state: EditorState, from: number, to: number) {
     return scanTextblocks(state.doc, from, to, (node, start) => {
-      let content = textContent(node, 0, Math.min(node.content.size, from - start))
+      let content = textContent(node).slice(0, Math.min(node.content.size, from - start))
       let match
       for (let off = 0;;) {
         this.regexp.lastIndex = off
@@ -203,25 +204,20 @@ export function validRegExp(source: string) {
   catch { return false }
 }
 
-function textContent(node: Node, from: number, to: number) {
+const TextContentCache = new WeakMap<Node, string>()
+
+function textContent(node: Node) {
+  let cached = TextContentCache.get(node)
+  if (cached) return cached
+
   let content = ""
-  for (let i = 0, pos = 0; i < node.childCount && pos < to; i++) {
-    let child = node.child(i), start = pos, end = pos + child.nodeSize
-    pos = end
-    if (end <= from) continue
-    if (child.isText) {
-      let text = child.text!
-      if (to < end) text = text.slice(0, to - start)
-      if (from > start) text = text.slice(from - start)
-      content += text
-    } else if (child.isLeaf) {
-      content += "\ufffc"
-    } else {
-      if (start >= from) content += " "
-      content += textContent(child, Math.max(0, from - start + 1), Math.min(child.content.size, to - start - 1))
-      if (end <= to) content += " "
-    }
+  for (let i = 0; i < node.childCount; i++) {
+    let child = node.child(i)
+    if (child.isText) content += child.text!
+    else if (child.isLeaf) content += "\ufffc"
+    else content += " " + textContent(child) + " "
   }
+  TextContentCache.set(node, content)
   return content
 }
 
