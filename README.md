@@ -151,12 +151,19 @@ These functions can be used to manipulate the active search state:
 
 
  * **`replaceNext`**`: Command`\
-   Replace the next instance of the search query.
+   Replace the currently selected instance of the search query, and
+   move to the next one. Or select the next match, if none is already
+   selected.
 
 
  * **`replaceNextNoWrap`**`: Command`\
    Replace the next instance of the search query. Don't wrap around
    at the end of the document.
+
+
+ * **`replaceCurrent`**`: Command`\
+   Replace the currently selected instance of the search query, if
+   any, and keep it selected.
 
 
  * **`replaceAll`**`: Command`\

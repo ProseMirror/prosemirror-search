@@ -122,7 +122,7 @@ export const findPrev = findCommand(true, -1)
 /// range.
 export const findPrevNoWrap = findCommand(false, -1)
 
-function replaceCommand(wrap: boolean): Command {
+function replaceCommand(wrap: boolean, moveForward: boolean): Command {
   return (state, dispatch) => {
     let search = searchKey.getState(state)
     if (!search || !search.query.valid) return false
@@ -133,9 +133,14 @@ function replaceCommand(wrap: boolean): Command {
     if (!dispatch) return true
     if (state.selection.from == next.from && state.selection.to == next.to) {
       let tr = state.tr.replace(next.from, next.to, search.query.getReplacement(state, next))
-      let after = nextMatch(search, state, wrap, next.from, next.to)
-      if (after) tr.setSelection(TextSelection.create(tr.doc, tr.mapping.map(after.from, 1), tr.mapping.map(after.to, -1)))
+      let after = moveForward && nextMatch(search, state, wrap, next.from, next.to)
+      if (after)
+        tr.setSelection(TextSelection.create(tr.doc, tr.mapping.map(after.from, 1), tr.mapping.map(after.to, -1)))
+      else
+        tr.setSelection(TextSelection.create(tr.doc, next.from, tr.mapping.map(next.to, 1)))
       dispatch(tr.scrollIntoView())
+    } else if (!moveForward){
+      return false
     } else {
       dispatch(state.tr.setSelection(TextSelection.create(state.doc, next.from, next.to)).scrollIntoView())
     }
@@ -143,12 +148,18 @@ function replaceCommand(wrap: boolean): Command {
   }
 }
 
-/// Replace the next instance of the search query.
-export const replaceNext = replaceCommand(true)
+/// Replace the currently selected instance of the search query, and
+/// move to the next one. Or select the next match, if none is already
+/// selected.
+export const replaceNext = replaceCommand(true, true)
 
 /// Replace the next instance of the search query. Don't wrap around
 /// at the end of the document.
-export const replaceNextNoWrap = replaceCommand(false)
+export const replaceNextNoWrap = replaceCommand(false, true)
+
+/// Replace the currently selected instance of the search query, if
+/// any, and keep it selected.
+export const replaceCurrent = replaceCommand(false, false)
 
 /// Replace all instances of the search query.
 export const replaceAll: Command = (state, dispatch) => {

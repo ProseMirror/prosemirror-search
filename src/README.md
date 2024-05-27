@@ -56,4 +56,6 @@ These functions can be used to manipulate the active search state:
 
 @replaceNextNoWrap
 
+@replaceCurrent
+
 @replaceAll

@@ -3,7 +3,7 @@ import {Node} from "prosemirror-model"
 
 import {SearchQuery, search,
         findNext, findNextNoWrap, findPrev, findPrevNoWrap,
-        replaceNext, replaceNextNoWrap, replaceAll} from "prosemirror-search"
+        replaceNext, replaceNextNoWrap, replaceCurrent, replaceAll} from "prosemirror-search"
 
 import {doc, blockquote, p, img, eq} from "prosemirror-test-builder"
 import ist from "ist"
@@ -121,6 +121,15 @@ describe("search", () => {
                   doc(blockquote(p("para <a>one<b>"), p("para two")), p("and one")),
                   doc(blockquote(p("para two"), p("para two")), p("and <a>one<b>")),
                   replaceNext)
+    })
+  })
+
+  describe("replaceCurrent", () => {
+    it("does nothing when not at a match", () => {
+      testCommand({search: "one", replace: "two"}, p("one"), null, replaceCurrent)
+    })
+    it("selects the replacement", () => {
+      testCommand({search: "one", replace: "two"}, p("<a>one<b>"), p("<a>two<b>"), replaceCurrent)
     })
   })
 
