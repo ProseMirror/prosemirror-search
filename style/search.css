@@ -1,6 +1,6 @@
 .ProseMirror-search-match {
   background-color: #ffff0054;
 }
-.ProseMirror-active-search-match {
+.ProseMirror-active-search-match::selection {
   background-color: #ff6a0054;
 }
