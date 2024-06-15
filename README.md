@@ -99,8 +99,16 @@ to communication around the project.
    Find the previous occurrence of this query in the given range.
    Note that, if `to` is given, it should be _less_ than `from`.
 
- * **`getReplacement`**`(state: EditorState, result: SearchResult) → Slice`\
-   Get a replacement slice for a given search result.
+ * **`getReplacements`**`(state: EditorState, result: SearchResult) → {from: number, to: number, insert: Slice}[]`\
+   Get the ranges that should be replaced for this result. This can
+   return multiple ranges when `this.replace` contains
+   `$1`/`$&`-style placeholders, in which case the preserved
+   content is skipped by the replacements.
+
+   Ranges are sorted by position, and `from`/`to` positions all
+   refer to positions in `state.doc`. When applying these, you'll
+   want to either apply them from back to front, or map these
+   positions through your transaction's current mapping.
 
 
 ### interface SearchResult

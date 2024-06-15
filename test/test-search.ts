@@ -1,4 +1,4 @@
-import {EditorState, TextSelection, Command} from "prosemirror-state"
+import {EditorState, TextSelection, Command, Transaction} from "prosemirror-state"
 import {Node} from "prosemirror-model"
 
 import {SearchQuery, search,
@@ -121,6 +121,25 @@ describe("search", () => {
                   doc(blockquote(p("para <a>one<b>"), p("para two")), p("and one")),
                   doc(blockquote(p("para two"), p("para two")), p("and <a>one<b>")),
                   replaceNext)
+    })
+    it("doesn't replace reused content", () => {
+      let state = mkState({search: ".(eu).", regexp: true, replace: "p$1t"}, p("<a>deux<b> trois"))
+      let tr: Transaction | undefined
+      replaceNext(state, t => tr = t)
+      ist(tr)
+      ist(tr!.doc, p("peut trois"), eq)
+      ist(tr!.mapping.map(2), 2)
+    })
+    it("can handle multiple references to groups", () => {
+      testCommand({search: "(ab)-(cd)", regexp: true, replace: "$2$1$2"},
+                  p("<a>ab-cd<b>"), p("<a>cdabcd<b>"), replaceNext)
+    })
+    it("replaces non-matched groups with nothing", () => {
+      testCommand({search: "(ab)|(cd)", regexp: true, replace: "x$2"},
+                  p("<a>ab<b>"), p("<a>x<b>"), replaceNext)
+    })
+    it("supports matches in string replacements", () => {
+      testCommand({search: "one", replace: "$&$&"}, p("<a>one<b>"), p("<a>oneone<b>"), replaceNext)
     })
   })
 

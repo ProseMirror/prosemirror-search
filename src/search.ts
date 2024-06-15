@@ -132,7 +132,11 @@ function replaceCommand(wrap: boolean, moveForward: boolean): Command {
 
     if (!dispatch) return true
     if (state.selection.from == next.from && state.selection.to == next.to) {
-      let tr = state.tr.replace(next.from, next.to, search.query.getReplacement(state, next))
+      let tr = state.tr, replacements = search.query.getReplacements(state, next)
+      for (let i = replacements.length - 1; i >= 0; i--) {
+        let {from, to, insert} = replacements[i]
+        tr.replace(from, to, insert)
+      }
       let after = moveForward && nextMatch(search, state, wrap, next.from, next.to)
       if (after)
         tr.setSelection(TextSelection.create(tr.doc, tr.mapping.map(after.from, 1), tr.mapping.map(after.to, -1)))
@@ -176,7 +180,11 @@ export const replaceAll: Command = (state, dispatch) => {
     let tr = state.tr
     for (let i = matches.length - 1; i >= 0; i--) {
       let match = matches[i]
-      tr.replace(match.from, match.to, search.query.getReplacement(state, match))
+      let replacements = search.query.getReplacements(state, match)
+      for (let j = replacements.length - 1; j >= 0; j--) {
+        let {from, to, insert} = replacements[j]
+        tr.replace(from, to, insert)
+      }
     }
     dispatch(tr)
   }

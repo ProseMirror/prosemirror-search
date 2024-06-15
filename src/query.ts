@@ -92,30 +92,42 @@ export class SearchQuery {
       : string.replace(/\\([nrt\\])/g, (_, ch) => ch == "n" ? "\n" : ch == "r" ? "\r" : ch == "t" ? "\t" : "\\")
   }
 
-  /// Get a replacement slice for a given search result.
-  getReplacement(state: EditorState, result: SearchResult): Slice {
-    let marks = state.doc.resolve(result.from).marksAcross(state.doc.resolve(result.to))
-    let text = this.unquote(this.replace)
-    let nodes = [], i = 0
-    if (result.match) {
-      text = text.replace(/\$([$&\d+])/g, (m, i) =>
-        i == "$" ? "$"
-        : i == "&" ? result.match![0]
-        : i != "0" && +i < result.match!.length ? result.match![i]
-        : m)
-      for (let pos = result.from;;) {
-        let obj = text.indexOf("\ufffc", i)
-        if (obj < 0) break
-        let found = findLeafBetween(state, pos, result.to)
-        if (!found) break
-        if (obj > i) nodes.push(state.schema.text(text.slice(i, obj), marks))
-        nodes.push(found.node)
-        i = obj + 1
-        pos = found.pos + 1
+  /// Get the ranges that should be replaced for this result. This can
+  /// return multiple ranges when `this.replace` contains
+  /// `$1`/`$&`-style placeholders, in which case the preserved
+  /// content is skipped by the replacements.
+  ///
+  /// Ranges are sorted by position, and `from`/`to` positions all
+  /// refer to positions in `state.doc`. When applying these, you'll
+  /// want to either apply them from back to front, or map these
+  /// positions through your transaction's current mapping.
+  getReplacements(state: EditorState, result: SearchResult): {from: number, to: number, insert: Slice}[] {
+    let $from = state.doc.resolve(result.from)
+    let marks = $from.marksAcross(state.doc.resolve(result.to))
+    let ranges: {from: number, to: number, insert: Slice}[] = []
+
+    let frag = Fragment.empty, pos = result.from, {match} = result
+    let groups = match ? getGroupIndices(match) : [[0, result.to - result.from]]
+    let replParts = parseReplacement(this.unquote(this.replace)), groupSpan
+    for (let part of replParts) {
+      if (typeof part == "string") { // Replacement text
+        frag = frag.addToEnd(state.schema.text(part, marks))
+      } else if (groupSpan = groups[part.group]) {
+        let from = $from.start() + groupSpan[0], to = $from.start() + groupSpan[1]
+        if (part.copy) { // Copied content
+          frag = frag.append(state.doc.slice(from, to).content)
+        } else { // Skipped content
+          if (frag != Fragment.empty || from > pos) {
+            ranges.push({from: pos, to: from, insert: new Slice(frag, 0, 0)})
+            frag = Fragment.empty
+          }
+          pos = to
+        }
       }
     }
-    if (i < text.length) nodes.push(state.schema.text(text.slice(i), marks))
-    return new Slice(Fragment.from(nodes), 0, 0)
+    if (frag != Fragment.empty || pos < result.to)
+      ranges.push({from: pos, to: result.to, insert: new Slice(frag, 0, 0)})
+    return ranges
   }
 }
 
@@ -166,7 +178,7 @@ class StringQuery implements QueryImpl {
   }
 }
 
-const baseFlags = "g" + (/x/.unicode == null ? "" : "u")
+const baseFlags = "g" + (/x/.unicode == null ? "" : "u") + ((/x/ as any).hasIndices == null ? "" : "d")
 
 class RegExpQuery implements QueryImpl {
   regexp: RegExp
@@ -198,6 +210,44 @@ class RegExpQuery implements QueryImpl {
       return match ? {from: start + match.index, to: start + match.index + match[0].length, match} : null
     })
   }
+}
+
+function getGroupIndices(match: RegExpMatchArray): ([number, number] | undefined)[] {
+  if ((match as any).indices) return (match as any).indices
+  let result: ([number, number] | undefined)[] = [[0, match[0].length]]
+  for (let i = 1, pos = 0; i < match.length; i++) {
+    let found = match[i] ? match[0].indexOf(match[i], pos) : -1
+    result.push(found < 0 ? undefined : [found, pos = found + match[i].length])
+  }
+  return result
+}
+
+function parseReplacement(text: string): (string | {group: number, copy: boolean})[] {
+  let result: (string | {group: number, copy: boolean})[] = [], highestSeen = -1
+  function add(text: string) {
+    let last = result.length - 1
+    if (last > -1 && typeof result[last] == "string") result[last] += text
+    else result.push(text)
+  }
+  while (text.length) {
+    let m = /\$([$&\d+])/.exec(text)
+    if (!m) {
+      add(text)
+      return result
+    }
+    if (m.index > 0) add(text.slice(0, m.index + (m[1] == "$" ? 1 : 0)))
+    if (m[1] != "$") {
+      let n = m[1] == "&" ? 0 : +m[1]
+      if (highestSeen >= n) {
+        result.push({group: n, copy: true})
+      } else {
+        highestSeen = n || 1000
+        result.push({group: n, copy: false})
+      }
+    }
+    text = text.slice(m.index + m[0].length)
+  }
+  return result
 }
 
 export function validRegExp(source: string) {
@@ -256,13 +306,4 @@ function checkWordBoundary(state: EditorState, pos: number) {
   let before = $pos.nodeBefore, after = $pos.nodeAfter
   if (!before || !after || !before.isText || !after.isText) return true
   return !/\p{L}$/u.test(before.text!) || !/^\p{L}/u.test(after.text!)
-}
-
-function findLeafBetween(state: EditorState, from: number, to: number): {node: Node, pos: number} | null {
-  let found: {node: Node, pos: number} | null = null
-  state.doc.nodesBetween(from, to, (node, pos) => {
-    if (found) return false
-    if (node.isLeaf && node.isInline && !node.isText) found = {node, pos}
-  })
-  return found
 }
