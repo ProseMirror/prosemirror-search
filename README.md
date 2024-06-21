@@ -135,6 +135,11 @@ These functions can be used to manipulate the active search state:
    and searched range, when dispatched.
 
 
+ * **`getMatchHighlights`**`(state: EditorState) → DecorationSet`\
+   Access the decoration set holding the currently highlighted search
+   matches in the document.
+
+
 ### Commands
 
  * **`findNext`**`: Command`\

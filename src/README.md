@@ -42,6 +42,8 @@ These functions can be used to manipulate the active search state:
 
 @setSearchState
 
+@getMatchHighlights
+
 ### Commands
 
 @findNext

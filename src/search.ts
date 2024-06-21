@@ -70,6 +70,13 @@ export function getSearchState(state: EditorState): {
   return searchKey.getState(state)
 }
 
+/// Access the decoration set holding the currently highlighted search
+/// matches in the document.
+export function getMatchHighlights(state: EditorState) {
+  let search = searchKey.getState(state)
+  return search ? search.deco : DecorationSet.empty
+}
+
 /// Add metadata to a transaction that updates the active search query
 /// and searched range, when dispatched.
 export function setSearchState(tr: Transaction, query: SearchQuery, range: {from: number, to: number} | null = null) {
