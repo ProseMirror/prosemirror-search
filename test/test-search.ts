@@ -3,9 +3,10 @@ import {Node} from "prosemirror-model"
 
 import {SearchQuery, search,
         findNext, findNextNoWrap, findPrev, findPrevNoWrap,
-        replaceNext, replaceNextNoWrap, replaceCurrent, replaceAll} from "prosemirror-search"
+        replaceNext, replaceNextNoWrap, replaceCurrent, replaceAll,
+        SearchResult} from "prosemirror-search"
 
-import {doc, blockquote, p, img, eq} from "prosemirror-test-builder"
+import {doc, blockquote, p, img, em, eq} from "prosemirror-test-builder"
 import ist from "ist"
 
 type Query = ConstructorParameters<typeof SearchQuery>[0] & {range?: {from: number, to: number}}
@@ -170,6 +171,17 @@ describe("search", () => {
                   p("one one one one one"),
                   p("one two two two one"),
                   replaceAll)
+    })
+  })
+
+  describe("filterResult", () => {
+    it("lets you replace only emphasized texts", () => {
+      const filterResult = (state: EditorState, result: SearchResult) =>
+        state.doc.rangeHasMark(result.from, result.to, state.schema.marks.em.create())
+      testCommand({search: "one", replace: "two", filterResult},
+        doc(p("this one"), p("that ", em("one")), blockquote(p("another ", em("one")))),
+        doc(p("this one"), p("that ", em("two")), blockquote(p("another ", em("two")))),
+        replaceAll)
     })
   })
 })

@@ -1,6 +1,10 @@
 import {EditorState} from "prosemirror-state"
 import {Node, Slice, Fragment} from "prosemirror-model"
 
+/// A filter to further select the search results
+/// (e.g. you may keep only the ones that have a certain Mark).
+export type SearchResultFilter = (state: EditorState, result: SearchResult) => boolean
+
 export class SearchQuery {
   /// The search string (or regular expression).
   readonly search: string
@@ -22,6 +26,8 @@ export class SearchQuery {
   /// When true, matches that contain words are ignored when there are
   /// further word characters around them.
   readonly wholeWord: boolean
+  /// A filter on results (e.g. on the Marks they have).
+  readonly filterResult: SearchResultFilter | null
 
   /// @internal
   impl: QueryImpl
@@ -42,6 +48,8 @@ export class SearchQuery {
     replace?: string,
     /// Enable whole-word matching.
     wholeWord?: boolean,
+    /// A filter on results (e.g. on the Marks they have).
+    filterResult?: SearchResultFilter,
   }) {
     this.search = config.search
     this.caseSensitive = !!config.caseSensitive
@@ -50,6 +58,7 @@ export class SearchQuery {
     this.replace = config.replace || ""
     this.valid = !!this.search && !(this.regexp && !validRegExp(this.search))
     this.wholeWord = !!config.wholeWord
+    this.filterResult = config.filterResult || null
     this.impl = !this.valid ? nullQuery : this.regexp ? new RegExpQuery(this) : new StringQuery(this)
   }
 
@@ -83,7 +92,10 @@ export class SearchQuery {
 
   /// @internal
   checkResult(state: EditorState, result: SearchResult) {
-    return this.wholeWord ? checkWordBoundary(state, result.from) && checkWordBoundary(state, result.to) : true
+    let ok = this.wholeWord ? checkWordBoundary(state, result.from) && checkWordBoundary(state, result.to) : true
+    if (!ok) return false
+    if (this.filterResult) ok = this.filterResult(state, result)
+    return ok
   }
 
   /// @internal
