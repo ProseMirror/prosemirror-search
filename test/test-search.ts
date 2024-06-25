@@ -174,11 +174,11 @@ describe("search", () => {
     })
   })
 
-  describe("filterResult", () => {
+  describe("filter", () => {
     it("lets you replace only emphasized texts", () => {
-      const filterResult = (state: EditorState, result: SearchResult) =>
+      const filter = (state: EditorState, result: SearchResult) =>
         state.doc.rangeHasMark(result.from, result.to, state.schema.marks.em.create())
-      testCommand({search: "one", replace: "two", filterResult},
+      testCommand({search: "one", replace: "two", filter},
         doc(p("this one"), p("that ", em("one")), blockquote(p("another ", em("one")))),
         doc(p("this one"), p("that ", em("two")), blockquote(p("another ", em("two")))),
         replaceAll)
