@@ -120,7 +120,9 @@ export class SearchQuery {
       if (typeof part == "string") { // Replacement text
         frag = frag.addToEnd(state.schema.text(part, marks))
       } else if (groupSpan = groups[part.group]) {
-        let from = $from.start() + groupSpan[0], to = $from.start() + groupSpan[1]
+        let level = $from.depth
+        while (level > 0 && $from.node(level).isInline) level--
+        let from = $from.start(level) + groupSpan[0], to = $from.start(level) + groupSpan[1]
         if (part.copy) { // Copied content
           frag = frag.append(state.doc.slice(from, to).content)
         } else { // Skipped content

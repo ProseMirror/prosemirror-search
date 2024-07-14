@@ -1,5 +1,5 @@
 import {EditorState, TextSelection, Command, Transaction} from "prosemirror-state"
-import {Node, NodeSpec, Schema} from "prosemirror-model"
+import {Node, Schema} from "prosemirror-model"
 
 import {SearchQuery, search,
         findNext, findNextNoWrap, findPrev, findPrevNoWrap,
@@ -42,25 +42,6 @@ function testCommand(query: Query, start: Node, next: Node | null, command: Comm
     ist(JSON.stringify(state.selection), JSON.stringify(expect.selection))
   }
 }
-
-// BEGINNING OF ADDED CODE
-const footnoteSpec: NodeSpec = {
-  group: "inline",
-  content: "text*",
-  inline: true,
-  // This makes the view treat the node as a leaf, even though it
-  // technically has content
-  atom: true,
-  toDOM: () => ["footnote", 0],
-  parseDOM: [{tag: "footnote"}]
-}
-
-const footnoteSchema = new Schema({
-  nodes: schema.spec.nodes.addBefore("image", "footnote", footnoteSpec),
-  marks: schema.spec.marks
-})
-// END OF ADDED CODE
-
 
 describe("search", () => {
   describe("findNext", () => {
@@ -163,21 +144,21 @@ describe("search", () => {
     })
   })
 
-  describe("replaceCurrent", () => {
-    it("does nothing when not at a match", () => {
-      testCommand({search: "one", replace: "two"}, p("one"), null, replaceCurrent)
+  function footnoteSchema() {
+    let footnoteSchema = new Schema({
+      nodes: schema.spec.nodes.addBefore("image", "footnote", {
+        group: "inline",
+        content: "text*",
+        inline: true,
+        // This makes the view treat the node as a leaf, even though it
+        // technically has content
+        atom: true,
+        toDOM: () => ["footnote", 0],
+        parseDOM: [{tag: "footnote"}]
+      }),
+      marks: schema.spec.marks
     })
-    it("selects the replacement", () => {
-      testCommand({search: "one", replace: "two"}, p("<a>one<b>"), p("<a>two<b>"), replaceCurrent)
-    })
-    it("replaces delimiters with regexp", () => {
-      testCommand({search: "“([^”]+)”", replace: "$1", regexp: true},
-                  p("This is the <a>“footnote”<b> text"),
-                  p("This is the <a>footnote<b> text"),
-                  replaceCurrent)
-    })
-    // I've added these because the failure happened in non-leaf nodes in my real case
-    let b = builders(footnoteSchema, {
+    return builders(footnoteSchema, {
       p: {nodeType: "paragraph"},
       pre: {nodeType: "code_block"},
       h1: {nodeType: "heading", level: 1},
@@ -191,14 +172,31 @@ describe("search", () => {
       img: {nodeType: "image", src: "img.png"},
       hr: {nodeType: "horizontal_rule"},
       a: {markType: "link", href: "foo"},
-    }) as any
+    })
+  }
+
+  describe("replaceCurrent", () => {
+    it("does nothing when not at a match", () => {
+      testCommand({search: "one", replace: "two"}, p("one"), null, replaceCurrent)
+    })
+    it("selects the replacement", () => {
+      testCommand({search: "one", replace: "two"}, p("<a>one<b>"), p("<a>two<b>"), replaceCurrent)
+    })
+    it("replaces delimiters with regexp", () => {
+      testCommand({search: "“([^”]+)”", replace: "$1", regexp: true},
+                  p("This is the <a>“footnote”<b> text"),
+                  p("This is the <a>footnote<b> text"),
+                  replaceCurrent)
+    })
     it("replaces inside non-leaf atoms", () => {
+      let b = footnoteSchema()
       testCommand({search: "footnote", replace: "NOTE"}, 
                   b.p("text", b.footnote("This is the <a>footnote<b> text")),
                   b.p("text", b.footnote("This is the <a>NOTE<b> text")),
                   replaceCurrent)
     })
     it("replaces delimiters with regexp inside non-leaf atoms", () => {
+      let b = footnoteSchema()
       testCommand({search: "“([^”]+)”", replace: "$1", regexp: true}, 
                   b.p("text", b.footnote("This is the <a>“footnote”<b> text")),
                   b.p("text", b.footnote("This is the <a>footnote<b> text")),
