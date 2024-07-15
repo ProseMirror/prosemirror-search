@@ -144,11 +144,11 @@ describe("search", () => {
     })
   })
 
-  function footnoteSchema() {
+  function footnoteSchema(content?: string) {
     let footnoteSchema = new Schema({
       nodes: schema.spec.nodes.addBefore("image", "footnote", {
         group: "inline",
-        content: "text*",
+        content: content || "text*",
         inline: true,
         // This makes the view treat the node as a leaf, even though it
         // technically has content
@@ -200,6 +200,13 @@ describe("search", () => {
       testCommand({search: "“([^”]+)”", replace: "$1", regexp: true}, 
                   b.p("text", b.footnote("This is the <a>“footnote”<b> text")),
                   b.p("text", b.footnote("This is the <a>footnote<b> text")),
+                  replaceCurrent)
+    })
+    it("replaces delimiters with regexp inside deeply-nested non-leaf atoms", () => {
+      let b = footnoteSchema("block*")
+      testCommand({search: "“([^”]+)”", replace: "$1", regexp: true}, 
+                  b.p("text", b.footnote(b.p("This is the <a>“footnote”<b> text"))),
+                  b.p("text", b.footnote(b.p("This is the <a>footnote<b> text"))),
                   replaceCurrent)
     })
   })
