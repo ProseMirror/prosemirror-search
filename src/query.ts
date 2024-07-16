@@ -120,9 +120,7 @@ export class SearchQuery {
       if (typeof part == "string") { // Replacement text
         frag = frag.addToEnd(state.schema.text(part, marks))
       } else if (groupSpan = groups[part.group]) {
-        let level = $from.depth
-        while (level > 0 && $from.node(level).isInline) level--
-        let from = $from.start(level) + groupSpan[0], to = $from.start(level) + groupSpan[1]
+        let from = result.matchStart + groupSpan[0], to = result.matchStart + groupSpan[1]
         if (part.copy) { // Copied content
           frag = frag.append(state.doc.slice(from, to).content)
         } else { // Skipped content
@@ -143,9 +141,10 @@ export class SearchQuery {
 /// A matched instance of a search query. `match` will be non-null
 /// only for regular expression queries.
 export interface SearchResult {
-  from: number,
-  to: number,
+  from: number
+  to: number
   match: RegExpMatchArray | null
+  matchStart: number
 }
 
 interface QueryImpl {
@@ -172,7 +171,7 @@ class StringQuery implements QueryImpl {
       let off = Math.max(from, start)
       let content = textContent(node).slice(off - start, Math.min(node.content.size, to - start))
       let index = (this.query.caseSensitive ? content : content.toLowerCase()).indexOf(this.string)
-      return index < 0 ? null : {from: off + index, to: off + index + this.string.length, match: null}
+      return index < 0 ? null : {from: off + index, to: off + index + this.string.length, match: null, matchStart: start}
     })
   }
 
@@ -182,7 +181,7 @@ class StringQuery implements QueryImpl {
       let content = textContent(node).slice(off - start, Math.min(node.content.size, from - start))
       if (!this.query.caseSensitive) content = content.toLowerCase()
       let index = content.lastIndexOf(this.string)
-      return index < 0 ? null : {from: off + index, to: off + index + this.string.length, match: null}
+      return index < 0 ? null : {from: off + index, to: off + index + this.string.length, match: null, matchStart: start}
     })
   }
 }
@@ -201,7 +200,7 @@ class RegExpQuery implements QueryImpl {
       let content = textContent(node).slice(0, Math.min(node.content.size, to - start))
       this.regexp.lastIndex = from - start
       let match = this.regexp.exec(content)
-      return match ? {from: start + match.index, to: start + match.index + match[0].length, match} : null
+      return match ? {from: start + match.index, to: start + match.index + match[0].length, match, matchStart: start} : null
     })
   }
 
@@ -216,7 +215,7 @@ class RegExpQuery implements QueryImpl {
         match = next
         off = next.index + 1
       }
-      return match ? {from: start + match.index, to: start + match.index + match[0].length, match} : null
+      return match ? {from: start + match.index, to: start + match.index + match[0].length, match, matchStart: start} : null
     })
   }
 }
